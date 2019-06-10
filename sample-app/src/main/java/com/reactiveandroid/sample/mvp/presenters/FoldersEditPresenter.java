@@ -10,6 +10,9 @@ import com.reactiveandroid.sample.mvp.views.FoldersEditView;
 
 import java.util.List;
 
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.schedulers.Schedulers;
+
 @InjectViewState
 public class FoldersEditPresenter extends MvpPresenter<FoldersEditView> {
 
@@ -21,39 +24,53 @@ public class FoldersEditPresenter extends MvpPresenter<FoldersEditView> {
     }
 
     public void onFolderCreate(String folderName) {
+        if (folders == null) return;
+
         Folder newFolder = new Folder(folderName);
         folders.add(newFolder);
         getViewState().updateFoldersList(folders);
-        newFolder.saveAsync().subscribe();
+        newFolder.saveAsync()
+                .subscribeOn(Schedulers.io())
+                .subscribe();
     }
 
     public void onFolderUpdate(String folderName, int position) {
+        if (folders == null) return;
+
         Folder updatedFolder = folders.get(position);
         updatedFolder.setName(folderName);
         getViewState().updateFoldersList(folders);
-        updatedFolder.saveAsync().subscribe();
+        updatedFolder.saveAsync()
+                .subscribeOn(Schedulers.io())
+                .subscribe();
     }
 
     public void onFolderDelete(int position) {
+        if (folders == null) return;
+
         Folder deletedFolder = folders.remove(position);
         getViewState().updateFoldersList(folders);
-        deletedFolder.deleteAsync().subscribe();
+        deletedFolder.deleteAsync()
+                .subscribeOn(Schedulers.io())
+                .subscribe();
     }
 
     private void loadFolders() {
         Select.from(Folder.class)
                 .fetchAsync()
-                .subscribe(this::onFoldersLoaded);
-    }
-
-    private void onFoldersLoaded(List<Folder> folders) {
-        this.folders = folders;
-        getViewState().updateFoldersList(folders);
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(folders -> {
+                    this.folders = folders;
+                    getViewState().updateFoldersList(folders);
+                });
     }
 
     public void onDeleteAllFoldersClicked() {
         folders.clear();
         getViewState().closeScreen();
-        Delete.from(Note.class).executeAsync();
+        Delete.from(Note.class).executeAsync()
+                .subscribeOn(Schedulers.io())
+                .subscribe();
     }
 }
